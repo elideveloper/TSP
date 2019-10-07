@@ -2,21 +2,21 @@ package tsp
 
 import (
 	"math/rand"
-	"strings"
 )
 
 // ExploredRoutes keeps all explored routes
 var ExploredRoutes = map[string]bool{}
 
 // GetRandomRoute returns random string of all destinations
-func GetRandomRoute(destinations []string) []string {
+func GetRandomRoute(destinations []byte) []byte {
 	for {
-		rand.Shuffle(len(destinations), func(i, j int) {
+		for i := len(destinations) - 1; i > 0; i-- {
+			j := rand.Intn(i + 1)
 			destinations[i], destinations[j] = destinations[j], destinations[i]
-		})
+		}
 
-		if !ExploredRoutes[strings.Join(destinations, "")] {
-			ExploredRoutes[strings.Join(destinations, "")] = true
+		if !ExploredRoutes[string(destinations)] {
+			ExploredRoutes[string(destinations)] = true
 			return destinations
 		}
 	}
