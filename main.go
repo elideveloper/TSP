@@ -7,69 +7,30 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 	"time"
 )
 
-// поскольку тип ключа byte, то максимум 256 пунктов назначений возможно
+// отдельный поток с получением неповторяющегося рандомного роута
+// который постоянно не дожидаясь воркеров, создает маршрут и готов его отдать на исследование
 
-type Destinations struct {
-	InterNamesIndexes map[byte]int
-	DistancesMatrix   [][]float64
-	InternalNames     []byte
-	NamesMap          map[byte]string
-}
+// несколько потоков воркеров, которые через канал принимают маршруты
+// и проделывают нужные операции для получения лучших маршрутов
 
-func NewDestinations(inputMatrix [][]string) Destinations {
-	l := len(inputMatrix[0])
-	nameIndexes := make(map[byte]int)
-	internalNames := make([]byte, l)
-	namesMap := make(map[byte]string)
-	var startingInnerValue byte
-	for i := 0; i < l; i++ {
-		namesMap[startingInnerValue] = inputMatrix[0][i]
-		internalNames[i] = startingInnerValue
-		nameIndexes[startingInnerValue] = i
-		startingInnerValue++
-	}
-	var err error
-	distMatrix := make([][]float64, l)
-	for i := 0; i < l; i++ {
-		distMatrix[i] = make([]float64, l)
-		for j := 0; j < l; j++ {
-			distMatrix[i][j], err = strconv.ParseFloat(inputMatrix[i+1][j], 64)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-	for i := 0; i < l; i++ {
-		for j := 0; j < l; j++ {
-			distMatrix[j][i] = distMatrix[i][j]
-		}
-	}
-	ds := Destinations{
-		InterNamesIndexes: nameIndexes,
-		DistancesMatrix:   distMatrix,
-		NamesMap:          namesMap,
-		InternalNames:     internalNames,
-	}
-	return ds
-}
+// по окончанию времени/итераций, среди лучших маршрутов воркеров
+// выбирается лучший из лучших (или просто получаем все)
 
-func (d Destinations) getDistance(a, b byte) float64 {
-	return d.DistancesMatrix[d.InterNamesIndexes[a]][d.InterNamesIndexes[b]]
-}
-
-func (d Destinations) getInternalNames() []byte {
-	names := make([]byte, len(d.InternalNames))
-	copy(names, d.InternalNames)
-	return names
+func worker(routesChan <-chan []byte) {
+	for {
+		fmt.Println(<-routesChan)
+		time.Sleep(time.Second * 1)
+	}
 }
 
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
+
+	routesChan := make(chan []byte)
 
 	csvFile, err := os.Open("destinations.csv")
 	if err != nil {
@@ -84,18 +45,18 @@ func main() {
 	}
 	csvFile.Close()
 
-	dests := NewDestinations(fields)
-	fmt.Println(dests.DistancesMatrix)
-	fmt.Println(dests.InterNamesIndexes)
+	dm := tsp.NewDataManager(fields)
 
-	fmt.Println(dests.getDistance(0, 1))
+	go func() {
+		for {
+			routesChan <- dm.GetRandomRoute()
+		}
+	}()
 
-	fmt.Println(dests.getInternalNames())
-
-	for i := 0; i < 10; i++ {
-		fmt.Println(tsp.GetRandomRoute(dests.getInternalNames()))
+	for i := 0; i < 3; i++ {
+		go worker(routesChan)
 	}
 
-	fmt.Println(len(tsp.ExploredRoutes))
+	time.Sleep(time.Second * 10)
 
 }
