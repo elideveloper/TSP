@@ -1,7 +1,7 @@
 package main
 
 import (
-	"TSP/tsp"
+	"github.com/elideveloper/TSP/tsp"
 	"bufio"
 	"encoding/csv"
 	"fmt"
