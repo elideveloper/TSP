@@ -1,13 +1,17 @@
 package main
 
 import (
-	"github.com/elideveloper/TSP/tsp"
 	"bufio"
 	"encoding/csv"
 	"fmt"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/elideveloper/TSP/eval"
+
+	"github.com/elideveloper/TSP/ga"
+	"github.com/elideveloper/TSP/tsp"
 )
 
 // отдельный поток с получением неповторяющегося рандомного роута
@@ -19,18 +23,11 @@ import (
 // по окончанию времени/итераций, среди лучших маршрутов воркеров
 // выбирается лучший из лучших (или просто получаем все)
 
-func worker(routesChan <-chan []byte) {
-	for {
-		fmt.Println(<-routesChan)
-		time.Sleep(time.Second * 1)
-	}
-}
-
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	routesChan := make(chan []byte)
+	routesChan := make(chan tsp.Route)
 
 	csvFile, err := os.Open("destinations.csv")
 	if err != nil {
@@ -47,14 +44,16 @@ func main() {
 
 	dm := tsp.NewDataManager(fields)
 
+	g := ga.NewGA(10)
+
 	go func() {
 		for {
 			routesChan <- dm.GetRandomRoute()
 		}
 	}()
 
-	for i := 0; i < 3; i++ {
-		go worker(routesChan)
+	for i := 0; i < 4; i++ {
+		go g.Worker(eval.Evaluate, dm, routesChan)
 	}
 
 	time.Sleep(time.Second * 10)

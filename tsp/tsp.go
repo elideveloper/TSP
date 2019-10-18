@@ -5,6 +5,8 @@ import (
 	"strconv"
 )
 
+type Route []byte
+
 // поскольку тип ключа byte, то максимум 256 пунктов назначений возможно
 
 // надо ограничить на 10М мапу исследованных, возможно далее сделать оптимизацию
@@ -20,16 +22,16 @@ import (
 type DataManager struct {
 	InterNamesIndexes map[byte]int
 	DistancesMatrix   [][]float64
-	InternalNames     []byte
+	InternalNames     Route
 	NamesMap          map[byte]string
 	exploredRoutes    map[string]bool
 }
 
 // NewDataManager is a constructor of DataManager
-func NewDataManager(inputMatrix [][]string) DataManager {
+func NewDataManager(inputMatrix [][]string) *DataManager {
 	l := len(inputMatrix[0])
 	nameIndexes := make(map[byte]int)
-	internalNames := make([]byte, l)
+	internalNames := make(Route, l)
 	namesMap := make(map[byte]string)
 	var startingInnerValue byte
 	for i := 0; i < l; i++ {
@@ -61,7 +63,7 @@ func NewDataManager(inputMatrix [][]string) DataManager {
 		InternalNames:     internalNames,
 		exploredRoutes:    make(map[string]bool),
 	}
-	return ds
+	return &ds
 }
 
 // GetDistance computes distance between two destinations using internal names
@@ -70,24 +72,29 @@ func (d DataManager) GetDistance(a, b byte) float64 {
 }
 
 // GetInternalNames returns a new slice of internal names
-func (d DataManager) GetInternalNames() []byte {
-	names := make([]byte, len(d.InternalNames))
+func (d DataManager) GetInternalNames() Route {
+	names := make(Route, len(d.InternalNames))
 	copy(names, d.InternalNames)
 	return names
 }
 
-// GetRandomRoute returns random string of all destinations
-func (d DataManager) GetRandomRoute() []byte {
+// GetRandomRoute returns random route from home through all cities to home
+func (d DataManager) GetRandomRoute() Route {
 	destinations := d.GetInternalNames()
+	length := len(destinations)
 	for {
-		for i := len(destinations) - 1; i > 0; i-- {
-			j := rand.Intn(i + 1)
+		for i := length - 1; i > 1; i-- {
+			j := 1 + rand.Intn(i)
 			destinations[i], destinations[j] = destinations[j], destinations[i]
 		}
+		reversedRoute := make(Route, length)
+		for i := 0; i < length; i++ {
+			reversedRoute[i] = destinations[length-i-1]
+		}
 
-		if !d.exploredRoutes[string(destinations)] {
-			d.exploredRoutes[string(destinations)] = true
-			return destinations
+		if !d.exploredRoutes[string(destinations[1:])] && !d.exploredRoutes[string(reversedRoute[:length-1])] {
+			d.exploredRoutes[string(destinations[1:])] = true
+			return append(destinations, destinations[0])
 		}
 	}
 }
