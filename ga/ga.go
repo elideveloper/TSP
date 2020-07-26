@@ -2,6 +2,7 @@ package ga
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/elideveloper/TSP/eval"
@@ -10,13 +11,15 @@ import (
 
 type GA struct {
 	generationSize int
+	numWorkers     int
 	mut            *sync.Mutex
 	parents        []tsp.Route
 }
 
-func NewGA(genSize int) *GA {
+func NewGA(genSize, numWorkers int) *GA {
 	return &GA{
 		generationSize: genSize,
+		numWorkers:     numWorkers,
 		mut:            &sync.Mutex{},
 		parents:        make([]tsp.Route, 0),
 	}
@@ -42,11 +45,23 @@ func (g *GA) Worker(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-ch
 	g.mut.Lock()
 	g.parents = append(g.parents, routes[bestIndex])
 	g.mut.Unlock()
-
 }
 
 func (g GA) PrintParents(evalFunc eval.EvalFunc, dm *tsp.DataManager) {
 	for _, p := range g.parents {
 		fmt.Println(p, evalFunc(p, dm))
 	}
+}
+
+func (g GA) GetBestFoundRoute(evalFunc eval.EvalFunc, dm *tsp.DataManager) tsp.Route {
+	var bestRoute tsp.Route
+	bestScore := math.MaxFloat64
+	for _, p := range g.parents {
+		score := evalFunc(p, dm)
+		if score < bestScore {
+			bestRoute = p
+			bestScore = score
+		}
+	}
+	return bestRoute
 }

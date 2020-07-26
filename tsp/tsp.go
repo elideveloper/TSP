@@ -81,7 +81,7 @@ func (d DataManager) GetInternalNames() Route {
 }
 
 // GetRandomRoute returns random route from home through all cities to home
-func (d DataManager) GetRandomRoute() Route {
+func (d DataManager) GetUnqRandomRoute() Route {
 	destinations := d.GetInternalNames()
 	length := len(destinations)
 	for {
@@ -89,6 +89,7 @@ func (d DataManager) GetRandomRoute() Route {
 			j := 1 + rand.Intn(i)
 			destinations[i], destinations[j] = destinations[j], destinations[i]
 		}
+		// find reverse route to exclude the same routes
 		reversedRoute := make(Route, length)
 		for i := 0; i < length; i++ {
 			reversedRoute[i] = destinations[length-i-1]
@@ -96,7 +97,7 @@ func (d DataManager) GetRandomRoute() Route {
 
 		if !d.exploredRoutes[string(destinations[1:])] && !d.exploredRoutes[string(reversedRoute[:length-1])] {
 			d.exploredRoutes[string(destinations[1:])] = true
-			return append(destinations, destinations[0])
+			return append(destinations, destinations[0]) // add final destination into route
 		}
 	}
 }
