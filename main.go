@@ -52,9 +52,17 @@ func main() {
 		}
 	}()
 
+	//  num of workers should be in GA
+	// and just run needed number of goroutines
+	// via calling one function
 	for i := 0; i < 4; i++ {
 		go g.Worker(eval.Evaluate, dm, routesChan)
 	}
+	time.Sleep(time.Second * 1)
+	g.PrintParents(eval.Evaluate, dm)
+
+	// GA oprations on parents
+	// and make a new generation
 
 	time.Sleep(time.Second * 10)
 
