@@ -18,6 +18,8 @@ type Route []byte
 // в конце концов можно будет прикрепить http api функцию, которая принимает массив входных данных =)
 // и запустить это в контейнере на удаленном серваке
 
+// cover with units
+
 // DataManager is a class representing input destinations
 type DataManager struct {
 	InterNamesIndexes map[byte]int
