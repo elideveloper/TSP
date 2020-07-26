@@ -21,11 +21,11 @@ func NewGA(genSize, numWorkers int) *GA {
 		generationSize: genSize,
 		numWorkers:     numWorkers,
 		mut:            &sync.Mutex{},
-		parents:        make([]tsp.Route, 0),
+		parents:        make([]tsp.Route, numWorkers),
 	}
 }
 
-func (g *GA) Worker(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-chan tsp.Route) {
+func (g *GA) Worker(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-chan tsp.Route, parentIndex int) {
 	routes := make([]tsp.Route, g.generationSize)
 	bestIndex := 0
 	var bestScore, buffScore float64
@@ -42,9 +42,22 @@ func (g *GA) Worker(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-ch
 		}
 	}
 
-	g.mut.Lock()
-	g.parents = append(g.parents, routes[bestIndex])
-	g.mut.Unlock()
+	g.parents[parentIndex] = routes[bestIndex]
+}
+
+func (g *GA) RunSearch(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-chan tsp.Route) {
+	wg := sync.WaitGroup{}
+	for i := 0; i < g.numWorkers; i++ {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, parIndex int) {
+			defer wg.Done()
+			g.Worker(evalFunc, dm, routesChan, parIndex)
+		}(&wg, i)
+	}
+	wg.Wait()
+
+	// GA operations on parents
+	// and make a new generation
 }
 
 func (g GA) PrintParents(evalFunc eval.EvalFunc, dm *tsp.DataManager) {

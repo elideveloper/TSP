@@ -66,23 +66,11 @@ func main() {
 	}()
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup) {
-			gA.Worker(eval.Evaluate, dm, routesChan)
-			wg.Done()
-		}(&wg)
-	}
+	gA.RunSearch(eval.Evaluate, dm, routesChan)
 	wg.Wait()
 	time.Sleep(time.Second * 1)
-	//gA.PrintParents(eval.Evaluate, dm)
 
 	route := gA.GetBestFoundRoute(eval.Evaluate, dm)
 	fmt.Println(route, eval.Evaluate(route, dm))
-
-	// GA operations on parents
-	// and make a new generation
-
-	//time.Sleep(time.Second * 2)
 
 }
