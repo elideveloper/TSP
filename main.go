@@ -8,7 +8,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/elideveloper/TSP/eval"
@@ -35,8 +34,9 @@ func main() {
 		logger = log.New(&buf, "logger: ", log.Lshortfile)
 	)
 
-	genSize := 40
-	numWorkers := 20
+	genSize := 20
+	numWorkers := 10
+	numGenerations := 1000
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -65,10 +65,7 @@ func main() {
 		}
 	}()
 
-	wg := sync.WaitGroup{}
-	gA.RunSearch(eval.Evaluate, dm, routesChan)
-	wg.Wait()
-	time.Sleep(time.Second * 1)
+	gA.RunSearch(eval.Evaluate, dm, routesChan, numGenerations)
 
 	route := gA.GetBestFoundRoute(eval.Evaluate, dm)
 	fmt.Println(route, eval.Evaluate(route, dm))

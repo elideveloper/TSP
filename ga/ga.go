@@ -3,6 +3,7 @@ package ga
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 
 	"github.com/elideveloper/TSP/eval"
@@ -15,7 +16,6 @@ import (
 type GA struct {
 	generationSize int
 	numWorkers     int
-	mut            *sync.Mutex
 	parents        []tsp.Route
 }
 
@@ -23,7 +23,6 @@ func NewGA(genSize, numWorkers int) *GA {
 	return &GA{
 		generationSize: genSize,
 		numWorkers:     numWorkers,
-		mut:            &sync.Mutex{},
 		parents:        make([]tsp.Route, numWorkers),
 	}
 }
@@ -45,22 +44,28 @@ func (g *GA) Worker(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-ch
 		}
 	}
 
+	// TODO reuse found parents from last generation and not only generate a new randoms
+
 	g.parents[parentIndex] = routes[bestIndex]
 }
 
-func (g *GA) RunSearch(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-chan tsp.Route) {
-	wg := sync.WaitGroup{}
-	for i := 0; i < g.numWorkers; i++ {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, parIndex int) {
-			defer wg.Done()
-			g.Worker(evalFunc, dm, routesChan, parIndex)
-		}(&wg, i)
-	}
-	wg.Wait()
+func (g *GA) RunSearch(evalFunc eval.EvalFunc, dm *tsp.DataManager, routesChan <-chan tsp.Route, numGenerations int) {
 
-	// GA operations on parents
-	// and make a new generation
+	for j := 0; j < numGenerations; j++ {
+		wg := sync.WaitGroup{}
+		for i := 0; i < g.numWorkers; i++ {
+			wg.Add(1)
+			go func(wg *sync.WaitGroup, parIndex int) {
+				defer wg.Done()
+				g.Worker(evalFunc, dm, routesChan, parIndex)
+			}(&wg, i)
+		}
+		wg.Wait()
+
+		// get recombinations from parents
+		g.parents = buildNewGeneration(g.parents)
+	}
+
 }
 
 func (g GA) PrintParents(evalFunc eval.EvalFunc, dm *tsp.DataManager) {
@@ -80,4 +85,39 @@ func (g GA) GetBestFoundRoute(evalFunc eval.EvalFunc, dm *tsp.DataManager) tsp.R
 		}
 	}
 	return bestRoute
+}
+
+func buildNewGeneration(generation []tsp.Route) []tsp.Route {
+	newGeneration := make([]tsp.Route, 0)
+	for j := 0; j < len(generation); j++ {
+		if j == len(generation)-1 {
+			// recombination of last and first parents
+			newGeneration = append(newGeneration, getRecombination(generation[j], generation[0]))
+		} else {
+			newGeneration = append(newGeneration, getRecombination(generation[j], generation[j+1]))
+		}
+	}
+	return newGeneration
+}
+
+func getRecombination(left, right tsp.Route) tsp.Route {
+
+	x := rand.Intn(len(left))
+
+	child := make(tsp.Route, x)
+	copy(child, left[:x])
+
+	existingMap := make(map[byte]struct{})
+
+	for i := 0; i < x; i++ {
+		existingMap[child[i]] = struct{}{}
+	}
+	for i := 0; i < len(right); i++ {
+		if _, ok := existingMap[right[i]]; !ok {
+			child = append(child, right[i])
+		}
+	}
+
+	// just append initial 'home' point
+	return append(child, child[0])
 }
