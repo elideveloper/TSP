@@ -9,6 +9,9 @@ import (
 	"github.com/elideveloper/TSP/tsp"
 )
 
+// crossover by 2 points
+// mutation with given probability
+
 type GA struct {
 	generationSize int
 	numWorkers     int
